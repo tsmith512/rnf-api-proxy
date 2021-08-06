@@ -5,7 +5,8 @@ addEventListener("fetch", event => {
 
 async function handleIncoming(request) {
   let responseHeaders = new Headers({
-    'Access-Control-Allow-Origin': '*'
+    'Access-Control-Allow-Origin': '*',
+    'Content-Type': 'application/json',
   });
 
   if (['GET', 'HEAD', 'OPTIONS'].indexOf(request.method) === -1) {
