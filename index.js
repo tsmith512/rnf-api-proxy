@@ -100,6 +100,38 @@ async function handleIncoming(request) {
     content.line.coordinates = simplified;
   }
 
+  // Let's cache some of these responses if we're able:
+  // 1 The index of trips doesn't change often
+  // 2 Once a trip is over, it doesn't change at all
+  // 3 The "location from timestamp" won't change after it has been submitted,
+  //   so we need to check if response-time is close to requested-time.
+
+  let cacheable = false; // false, or a number of days.
+
+  // #1: Trips index
+  if (path === '/api/trips') {
+    cacheable = 1;
+  }
+
+  // #2: Trip history
+  else if (path.match(/\/api\/trips\/\d+$/)) {
+    cacheable = (content?.endtime < Math.floor(Date.now() / 1000)) ? 365 : false;
+  }
+
+  // #3: Location for a given time
+  else if (path.match(/\/api\/location\/history\/timestamp\/\d+$/)) {
+    const difference = (content?.time - path.match(/\d+/)[0]);
+
+    if (Number.isInteger(difference) && (Math.abs(difference)/3600) < 60) {
+      cacheable = 365;
+    }
+  }
+
+  if (cacheable) {
+    responseHeaders.set('X-Cache-Debug', `Cacheable. Target expiration ${cacheable} days.`);
+    responseHeaders.set('Cache-Control', `public, max-age=${cacheable * 24 * 60 * 60}`);
+  }
+
   if (rawResponse.status == 200) {
     responseHeaders.set('Content-Type', 'text/json');
     return new Response(JSON.stringify(content), {status: 200, headers: responseHeaders});
