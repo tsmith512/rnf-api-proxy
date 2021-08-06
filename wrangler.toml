@@ -3,5 +3,8 @@ type = "javascript"
 
 account_id = ""
 workers_dev = true
-route = ""
-zone_id = ""
+route = "www.routenotfound.com/api/*"
+zone_id = "cb2e7aac346593483a4e3a8543cb6855"
+
+# Secrets
+# SERVICE_HOST
