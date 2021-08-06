@@ -47,6 +47,17 @@ async function handleIncoming(request) {
     return new Response("Endpoint not in allowlist", {status: 403, headers: responseHeaders});
   }
 
+  // Let's see if we've looked this up before:
+  // (see https://developers.cloudflare.com/workers/examples/cache-api)
+  const cacheKey = new Request(requestURL.toString(), request);
+  const cache = caches.default;
+
+  const cachedResponse = await cache.match(cacheKey)
+  if (cachedResponse) {
+    return cachedResponse;
+  }
+  // #womp. No cached value, go grab it.
+
   // Go to the super-secret data hideout and get the info
   const newURL = `${SERVICE_HOST}${requestURL.pathname}`;
   const rawResponse = await fetch(newURL);
@@ -128,12 +139,19 @@ async function handleIncoming(request) {
   }
 
   if (cacheable) {
-    responseHeaders.set('X-Cache-Debug', `Cacheable. Target expiration ${cacheable} days.`);
+    responseHeaders.set('X-Cache-Debug', `Cacheable. Target expiration ${cacheable} days. Fetched at ${Math.floor(Date.now() / 1000)}`);
     responseHeaders.set('Cache-Control', `public, max-age=${cacheable * 24 * 60 * 60}`);
   }
 
   if (rawResponse.status == 200) {
-    responseHeaders.set('Content-Type', 'text/json');
-    return new Response(JSON.stringify(content), {status: 200, headers: responseHeaders});
+    const finalResponse = new Response(JSON.stringify(content), {status: 200, headers: responseHeaders});
+
+    // @TODO: event.waitUntil will allow you to dispatch the response and cache
+    // it async after. Do that.
+    if (cacheable) {
+      await cache.put(cacheKey, finalResponse.clone());
+    }
+
+    return finalResponse;
   }
 }
