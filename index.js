@@ -139,20 +139,20 @@ async function handleIncoming(request) {
     }
   }
 
-  if (cacheable) {
-    responseHeaders.set('X-Cache-Debug', `Cacheable. Target expiration ${cacheable} days. Fetched at ${Math.floor(Date.now() / 1000)}`);
-    responseHeaders.set('Cache-Control', `public, max-age=${cacheable * 24 * 60 * 60}`);
-  }
-
   if (rawResponse.status == 200) {
     const finalResponse = new Response(JSON.stringify(content), {status: 200, headers: responseHeaders});
 
-    // @TODO: event.waitUntil will allow you to dispatch the response and cache
-    // it async after. Do that.
     if (cacheable) {
+      responseHeaders.set('X-Cache-Debug', `Cacheable. Target expiration ${cacheable} days. Fetched at ${Math.floor(Date.now() / 1000)}`);
+      responseHeaders.set('Cache-Control', `public, max-age=${cacheable * 24 * 60 * 60}`);
+
+      // @TODO: event.waitUntil will allow you to dispatch the response and cache
+      // it async after. Do that.
       await cache.put(cacheKey, finalResponse.clone());
     }
 
     return finalResponse;
   }
+
+  // @TODO and if the backend response wasn't a 200....? :thinking_face:
 }
